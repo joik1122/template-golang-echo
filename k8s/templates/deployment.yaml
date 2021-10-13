@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.service.name }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.service.name }}
+      tier: {{ .Values.service.tier }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.service.name }}
+        environment: {{ .Values.environment }}
+        tier: {{ .Values.service.tier }}
+      annotations:
+        sidecar.istio.io/proxyCPU: "10m"
+        sidecar.istio.io/proxyMemory: "64Mi"
+        sidecar.istio.io/proxyMemoryLimit: "64Mi"
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+    spec:
+      containers:
+        - name: {{ .Values.container.name }}
+          image: {{ .Values.container.image }}
+          ports:
+            - containerPort: {{ .Values.container.port }}
+          env:
+            - name: environment
+              value: {{ .Values.environment }}
+            - name: JAEGER_AGENT_HOST 
+              value: "jaeger-agent.tracing"
+            - name: JAEGER_AGENT_PORT
+              value: "6831"
+            - name: JAEGER_SERVICE_NAME
+              value: {{ .Values.container.name }}
+            {{ if not .Values.traceEnable }}
+            - name: JAEGER_DISABLED
+              value: "true"
+            {{ end }}
+          imagePullPolicy: {{ .Values.imageConfig.pullPolicy }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.container.port }}
+            periodSeconds: 10
+        {{ if .Values.resourceLimit }}
+          resources:
+            requests:
+              memory: "30Mi"
+              cpu: "20m"
+            limits:
+              memory: "30Mi"
+        {{ end }}
+      imagePullSecrets:
+        - name: {{ .Values.service.name }}-regcred
+        

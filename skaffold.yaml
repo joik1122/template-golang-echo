@@ -1,0 +1,24 @@
+apiVersion: skaffold/v2beta5
+kind: Config
+build:
+  tagPolicy:
+    dateTime:
+      format: "2006-01-02_15-04-05.999_MST"
+      timezone: "Local"
+  artifacts:
+  - image: rp-rpexample-api # 1. 이미지명
+  local:
+    push: false
+deploy:
+  helm:
+    releases:
+    - name: golang-example-release # Local helm 릴리즈 명 (딱히 규칙 없음, 다른 프로젝트와 겹치지만 않도록)
+      chartPath: k8s/
+      artifactOverrides:
+        container.image: rp-rpexample-api # 1과 통일할 것
+      setValueTemplates:
+        imageConfig.pullPolicy: IfNotPresent
+        replicas: 1
+    flags:
+      upgrade:
+        - --install
